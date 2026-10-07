@@ -1,8 +1,10 @@
 """제스처 분류기 훈련 - gesture_data.csv를 읽어 gesture_model.pkl로 저장
+웹 버전용 web/gesture_model.json도 함께 저장
 
 사용법:  python gesture_train.py
 """
 import csv
+import json
 from collections import Counter
 
 import joblib
@@ -13,7 +15,9 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from gesture_common import CLASSIFIER_PATH, DATA_PATH
+from gesture_common import BASE_DIR, CLASSIFIER_PATH, DATA_PATH
+
+WEB_MODEL_PATH = BASE_DIR / "web" / "gesture_model.json"
 
 
 def load_data():
@@ -28,6 +32,22 @@ def load_data():
                 labels.append(row[0])
                 features.append([float(v) for v in row[1:]])
     return np.array(features, dtype=np.float32), np.array(labels)
+
+
+def export_web_model(model):
+    """브라우저에서 같은 계산을 할 수 있도록 스케일러와 신경망 가중치를 JSON으로 저장"""
+    scaler, mlp = model.named_steps["standardscaler"], model.named_steps["mlpclassifier"]
+    data = {
+        "classes": [str(c) for c in mlp.classes_],
+        "mean": scaler.mean_.tolist(),
+        "scale": scaler.scale_.tolist(),
+        "activation": mlp.activation,
+        "out_activation": mlp.out_activation_,
+        "weights": [w.tolist() for w in mlp.coefs_],
+        "biases": [b.tolist() for b in mlp.intercepts_],
+    }
+    WEB_MODEL_PATH.parent.mkdir(exist_ok=True)
+    WEB_MODEL_PATH.write_text(json.dumps(data), encoding="utf-8")
 
 
 def main():
@@ -63,6 +83,8 @@ def main():
     model.fit(X, y)
     joblib.dump(model, CLASSIFIER_PATH)
     print(f"\n모델 저장: {CLASSIFIER_PATH}")
+    export_web_model(model)
+    print(f"웹 모델 저장: {WEB_MODEL_PATH}")
 
 
 if __name__ == "__main__":

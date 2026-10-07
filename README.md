@@ -1,6 +1,6 @@
 # MediaPipe 웹캠 실습
 
-Google [MediaPipe Tasks](https://developers.google.com/edge/mediapipe/solutions/guide) 비전 모델을 웹캠으로 실시간 실행하는 파이썬 예제 모음입니다. 손으로 원하는 제스처를 직접 학습시켜 인식하는 코드도 들어 있습니다.
+Google [MediaPipe Tasks](https://developers.google.com/edge/mediapipe/solutions/guide) 비전 모델을 웹캠으로 실시간 실행하는 파이썬 예제 모음입니다. 손으로 원하는 제스처를 직접 학습시켜 인식하는 코드와, 인식한 제스처에 맞춰 로고나 이모지를 띄우는 웹 버전도 들어 있습니다.
 
 ## 파일 구성
 
@@ -20,13 +20,29 @@ Google [MediaPipe Tasks](https://developers.google.com/edge/mediapipe/solutions/
 | 파일 | 종류 | 설명 |
 |---|---|---|
 | `gesture_collect.py` | 실행 코드 | **1단계: 수집.** 웹캠으로 손 모양을 녹화해 `gesture_data.csv`에 저장합니다. |
-| `gesture_train.py` | 실행 코드 | **2단계: 훈련.** `gesture_data.csv`로 분류기를 학습하고, 정확도를 출력한 뒤 `gesture_model.pkl`로 저장합니다. |
+| `gesture_train.py` | 실행 코드 | **2단계: 훈련.** `gesture_data.csv`로 분류기를 학습하고, 정확도를 출력한 뒤 `gesture_model.pkl`로 저장합니다. 웹 버전용 `web/gesture_model.json`도 함께 만듭니다. |
 | `gesture_infer.py` | 실행 코드 | **3단계: 추론.** 웹캠의 손 제스처를 실시간으로 인식해 제스처 이름과 확신도를 표시합니다. |
 | `gesture_common.py` | 공통 모듈 | 위 세 파일이 같이 쓰는 함수 모음(손 검출, 좌표 정규화, 그리기)입니다. 직접 실행하지 않습니다. |
 | `gesture_data.csv` | 데이터 | 수집된 제스처 데이터입니다. `fist`, `open`, `peace`, `thumbs_up` 각 약 500개가 들어 있습니다. |
 | `gesture_model.pkl` | 모델 | 위 데이터로 훈련한 분류기로, 테스트 정확도는 약 99%입니다. 바로 `gesture_infer.py`로 써 볼 수 있습니다. |
 
-**동작 원리:** MediaPipe 손 랜드마크 모델로 손가락 마디 21개의 3차원 좌표(63개 값)를 뽑고, 이를 scikit-learn 신경망(MLP) 분류기로 학습합니다. 좌표는 손목 기준으로 옮기고 손 크기로 나누며, 왼손은 좌우를 뒤집어 오른손 기준으로 맞춥니다. 그래서 손의 위치, 크기, 왼손/오른손이 달라도 같은 모양이면 같은 제스처로 인식합니다.
+### 제스처 리액션 웹 버전
+
+| 파일 | 종류 | 설명 |
+|---|---|---|
+| `web/index.html` | 웹 페이지 | 카메라 화면과 리액션을 보여 주는 페이지입니다. |
+| `web/app.js` | 웹 코드 | 브라우저에서 손을 검출하고 훈련한 모델로 제스처를 분류한 뒤, 제스처에 맞는 리액션을 화면 가운데에 크게 띄웁니다. |
+| `web/gesture_model.json` | 모델 | `gesture_model.pkl`을 브라우저에서 읽을 수 있게 변환한 파일로, `gesture_train.py`가 자동으로 만듭니다. |
+
+| 제스처 | 리액션 |
+|---|---|
+| `nike` | 스우시 모양과 "JUST DO IT" 문구 |
+| `ok` | 👌 |
+| `thumbs_up` / `peace` / `fist` / `open` | 👍 / ✌️ / ✊ / 🖐️ |
+
+> **주의:** 현재 저장소의 모델은 `fist`, `open`, `peace`, `thumbs_up`만 학습되어 있습니다. `nike`와 `ok` 리액션을 보려면 아래 [웹 버전 실행](#제스처-리액션-웹-버전-1) 1단계대로 두 제스처를 수집하고 다시 훈련해야 합니다. 페이지 아래쪽 목록에서 학습되지 않은 제스처는 흐리게 표시됩니다.
+
+**동작 원리:** MediaPipe 손 랜드마크 모델로 손가락 마디 21개의 3차원 좌표(63개 값)를 뽑고, 이를 scikit-learn 신경망(MLP) 분류기로 학습합니다. 좌표는 손목 기준으로 옮기고 손 크기로 나누며, 왼손은 좌우를 뒤집어 오른손 기준으로 맞춥니다. 그래서 손의 위치, 크기, 왼손/오른손이 달라도 같은 모양이면 같은 제스처로 인식합니다. 웹 버전은 같은 계산을 자바스크립트로 그대로 옮겨서, 파이썬과 같은 결과를 냅니다.
 
 모든 실행 코드는 화면을 좌우 반전(거울 모드)해서 보여 줍니다.
 
@@ -103,13 +119,49 @@ python gesture_infer.py
 - **특정 제스처를 처음부터 다시 모으기:** `gesture_data.csv`를 엑셀이나 메모장으로 열어 해당 이름의 줄을 지웁니다.
 - **전체를 처음부터 다시 하기:** `gesture_data.csv` 파일을 지웁니다.
 
+### 제스처 리액션 웹 버전
+
+**1단계: nike, ok 제스처 수집 후 다시 훈련** (처음 한 번만)
+
+```bash
+python gesture_collect.py nike
+python gesture_collect.py ok
+python gesture_train.py
+```
+
+이름은 반드시 `nike`, `ok`로 써야 리액션과 연결됩니다. 훈련하면 `web/gesture_model.json`도 자동으로 새로 만들어집니다.
+
+**2단계: 웹 서버 실행**
+
+```bash
+python -m http.server 8000
+```
+
+반드시 이 폴더(최상위)에서 실행합니다. 웹 페이지가 상위 폴더의 `hand_landmarker.task`를 불러오기 때문입니다.
+
+**3단계: 브라우저에서 열기**
+
+1. Chrome에서 **http://localhost:8000/web/** 에 접속합니다.
+2. **카메라 시작** 버튼을 누르고 카메라 권한을 허용합니다.
+3. 손 제스처를 하면 화면 가운데에 리액션이 뜹니다. 같은 제스처가 5프레임 연속으로 나와야 떠서 화면이 깜빡이지 않습니다.
+4. 끝낼 때는 터미널에서 `Ctrl + C`를 눌러 서버를 끕니다.
+
+`index.html`을 더블클릭해서 열면 안 됩니다. 브라우저 보안 때문에 카메라와 모델 파일을 불러올 수 없습니다.
+
+**리액션 바꾸기**
+- **다른 제스처에 리액션 붙이기:** `web/app.js`의 `REACTIONS`에 한 줄을 추가합니다. 예: `rock_on: { html: '<div class="emoji">🤘</div>', caption: "ROCK" },`
+- **로고 이미지 바꾸기:** 스우시는 공식 로고 파일이 아니라 비슷한 모양을 직접 그린 것입니다. 다른 이미지를 쓰려면 `web/app.js`의 `SWOOSH_SVG`를 `<img src="nike.png">`처럼 바꾸고, 이미지 파일을 `web` 폴더에 넣습니다.
+- **인식 기준 바꾸기:** `web/app.js` 위쪽의 `CONFIDENCE_THRESHOLD`(확신도 기준), `STABLE_FRAMES`(연속 프레임 수)를 조정합니다.
+
 ### 종료
 
-창을 클릭한 뒤 `q`나 `ESC`를 누릅니다. 창의 X 버튼으로는 꺼지지 않으니, 그럴 때는 터미널에서 `Ctrl + C`를 누릅니다.
+파이썬 예제는 창을 클릭한 뒤 `q`나 `ESC`를 누릅니다. 창의 X 버튼으로는 꺼지지 않으니, 그럴 때는 터미널에서 `Ctrl + C`를 누릅니다.
 
 ## 문제 해결
 
 - **`[Errno 2] No such file or directory`:** 다른 폴더에서 실행했거나 파일이 없는 경우입니다. 오류 메시지의 경로에 `mediapipe` 폴더가 들어 있는지 확인하고, 없다면 `cd`로 이 폴더로 이동한 뒤 다시 실행합니다.
 - **웹캠이 열리지 않을 때:** 다른 프로그램이 카메라를 쓰고 있지 않은지 확인합니다. 카메라가 여러 대라면 코드의 `cv2.VideoCapture(0)`을 `1`로 바꿔 봅니다.
+- **웹 페이지에 "불러오기 실패"가 뜰 때:** 서버를 최상위 폴더에서 실행했는지 확인합니다. `gesture_model.json`이 없다는 메시지라면 `python gesture_train.py`를 먼저 실행합니다. 인터넷 연결도 필요합니다(MediaPipe 라이브러리를 CDN에서 받습니다).
+- **웹 페이지에서 카메라가 안 켜질 때:** 주소창 왼쪽 아이콘에서 카메라 권한을 허용했는지, 주소가 `localhost`로 시작하는지 확인합니다.
 - **경로에 한글이 있을 때:** MediaPipe는 한글이 들어간 경로의 모델 파일을 열지 못합니다. 그래서 모든 코드가 모델 파일을 파이썬에서 직접 읽어 `model_asset_buffer`로 넘기며, 폴더 이름에 한글이 있어도 동작합니다.
 - **`.py` 파일을 더블클릭해 실행하지 마세요:** 오류가 나면 창이 바로 닫혀 원인을 볼 수 없습니다. 터미널에서 실행하는 것을 권장합니다.
